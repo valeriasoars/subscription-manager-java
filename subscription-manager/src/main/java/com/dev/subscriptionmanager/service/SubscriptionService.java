@@ -1,6 +1,7 @@
 package com.dev.subscriptionmanager.service;
 
 import com.dev.subscriptionmanager.dto.CreateSubscriptionRequest;
+import com.dev.subscriptionmanager.dto.PaymentWebhookDTO;
 import com.dev.subscriptionmanager.dto.SubscriptionResponse;
 import com.dev.subscriptionmanager.messaging.EventPublisher;
 import com.dev.subscriptionmanager.model.Event;
@@ -53,10 +54,21 @@ public class SubscriptionService {
     private SubscriptionResponse convertToResponse(Subscription sub) {
         SubscriptionResponse response = new SubscriptionResponse();
         response.setId(sub.getId());
-        response.setPlanId(sub.getPlanId());
-        response.setCustomerEmail(sub.getCustomerEmail());
         response.setStatus(sub.getStatus());
         response.setNextBillingDate(sub.getNextBillingDate());
         return response;
+    }
+
+    @Transactional
+    public void receivePaymentWebhook(PaymentWebhookDTO webhookDTO) {
+        Event event = new Event();
+        event.setType(webhookDTO.getEvent());
+        event.setData("{\"subscriptionId\":\"" + webhookDTO.getSubscriptionId() + "\",\"amount\":" + webhookDTO.getAmount() + "}");
+        event.setProcessed(false);
+
+        eventRepository.save(event);
+
+        eventPublisher.publishEvent(event);
+        System.out.println("LOG: Webhook de pagamento recebido usando Enum e enviado para a fila!");
     }
 }
