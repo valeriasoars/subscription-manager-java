@@ -29,43 +29,38 @@ public class PaymentEventListener {
 
     @RabbitListener(queues = RabbitMQConfig.FILA_PAGAMENTO)
     @Transactional
-    public void receivePaymentEvent(String message) {
-        try {
-            System.out.println("LOG [Worker Pagamento]: Mensagem recebida da fila!");
+    public void receivePaymentEvent(String message) throws Exception {
+        System.out.println("LOG [Worker Pagamento]: Mensagem recebida da fila!");
 
-            JsonNode eventNode = objectMapper.readTree(message);
-            UUID eventId = UUID.fromString(eventNode.get("id").asText());
+        JsonNode eventNode = objectMapper.readTree(message);
+        UUID eventId = UUID.fromString(eventNode.get("id").asText());
 
-            String eventTypeStr = eventNode.get("type").asText();
-            EventType eventType = objectMapper.convertValue(eventNode.get("type"), EventType.class);
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new RuntimeException("Evento não localizado no banco!"));
 
-            JsonNode dataNode = objectMapper.readTree(eventNode.get("data").asText());
-            UUID subscriptionId = UUID.fromString(dataNode.get("subscriptionId").asText());
-
-            Subscription subscription = subscriptionRepository.findById(subscriptionId)
-                    .orElseThrow(() -> new RuntimeException("Assinatura não encontrada!"));
-
-            if (eventType == EventType.PAYMENT_SUCCESS) {
-                subscription.setStatus(SubscriptionStatus.ACTIVE);
-                subscription.setNextBillingDate(LocalDate.now().plusMonths(1));
-                System.out.println("LOG [Worker Pagamento]: Sucesso! Assinatura " + subscriptionId + " atualizada para ACTIVE!");
-            } else if (eventType == EventType.PAYMENT_FAILED) {
-                subscription.setStatus(SubscriptionStatus.SUSPENDED);
-                System.out.println("LOG [Worker Pagamento]: Falha! Assinatura " + subscriptionId + " atualizada para SUSPENDED!");
-            }
-
-
-            subscriptionRepository.save(subscription);
-            System.out.println("LOG [Worker Pagamento]: Assinatura " + subscriptionId + " atualizada para ACTIVE!");
-
-            Event event = eventRepository.findById(eventId).orElse(null);
-            if (event != null) {
-                event.setProcessed(true);
-                eventRepository.save(event);
-            }
-
-        } catch (Exception e) {
-            System.err.println("ERRO ao processar evento de pagamento: " + e.getMessage());
+        if (event.isProcessed()) {
+            System.out.println("LOG [Worker Pagamento]: Evento " + eventId + " já foi processado anteriormente. Ignorando duplicidade.");
+            return;
         }
+
+        EventType eventType = objectMapper.convertValue(eventNode.get("type"), EventType.class);
+        JsonNode dataNode = objectMapper.readTree(eventNode.get("data").asText());
+        UUID subscriptionId = UUID.fromString(dataNode.get("subscriptionId").asText());
+
+        Subscription subscription = subscriptionRepository.findById(subscriptionId)
+                .orElseThrow(() -> new RuntimeException("Assinatura não encontrada!"));
+
+        if (eventType == EventType.PAYMENT_SUCCESS) {
+            subscription.setStatus(SubscriptionStatus.ACTIVE);
+            subscription.setNextBillingDate(LocalDate.now().plusMonths(1));
+        } else if (eventType == EventType.PAYMENT_FAILED) {
+            subscription.setStatus(SubscriptionStatus.SUSPENDED);
+        }
+
+        subscriptionRepository.save(subscription);
+
+        event.setProcessed(true);
+        eventRepository.save(event);
+        System.out.println("LOG [Worker Pagamento]: Evento processado com sucesso!");
     }
 }
