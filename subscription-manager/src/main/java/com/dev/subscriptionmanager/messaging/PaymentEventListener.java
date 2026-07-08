@@ -2,6 +2,7 @@ package com.dev.subscriptionmanager.messaging;
 
 import com.dev.subscriptionmanager.model.Event;
 import com.dev.subscriptionmanager.model.Subscription;
+import com.dev.subscriptionmanager.model.enums.EventType;
 import com.dev.subscriptionmanager.model.enums.SubscriptionStatus;
 import com.dev.subscriptionmanager.repository.EventRepository;
 import com.dev.subscriptionmanager.repository.SubscriptionRepository;
@@ -35,14 +36,25 @@ public class PaymentEventListener {
             JsonNode eventNode = objectMapper.readTree(message);
             UUID eventId = UUID.fromString(eventNode.get("id").asText());
 
+            String eventTypeStr = eventNode.get("type").asText();
+            EventType eventType = EventType.valueOf(eventTypeStr);
+
             JsonNode dataNode = objectMapper.readTree(eventNode.get("data").asText());
             UUID subscriptionId = UUID.fromString(dataNode.get("subscriptionId").asText());
 
             Subscription subscription = subscriptionRepository.findById(subscriptionId)
                     .orElseThrow(() -> new RuntimeException("Assinatura não encontrada!"));
 
-            subscription.setStatus(SubscriptionStatus.ACTIVE);
-            subscription.setNextBillingDate(LocalDate.now().plusMonths(1));
+            if (eventType == EventType.PAYMENT_SUCCESS) {
+                subscription.setStatus(SubscriptionStatus.ACTIVE);
+                subscription.setNextBillingDate(LocalDate.now().plusMonths(1));
+                System.out.println("LOG [Worker Pagamento]: Sucesso! Assinatura " + subscriptionId + " atualizada para ACTIVE!");
+            } else if (eventType == EventType.PAYMENT_FAILED) {
+                subscription.setStatus(SubscriptionStatus.SUSPENDED); 
+                System.out.println("LOG [Worker Pagamento]: Falha! Assinatura " + subscriptionId + " atualizada para SUSPENDED!");
+            }
+
+
             subscriptionRepository.save(subscription);
             System.out.println("LOG [Worker Pagamento]: Assinatura " + subscriptionId + " atualizada para ACTIVE!");
 
