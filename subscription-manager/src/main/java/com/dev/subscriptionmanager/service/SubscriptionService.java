@@ -2,6 +2,7 @@ package com.dev.subscriptionmanager.service;
 
 import com.dev.subscriptionmanager.dto.CreateSubscriptionRequest;
 import com.dev.subscriptionmanager.dto.PaymentWebhookDTO;
+import com.dev.subscriptionmanager.dto.PlanChangeRequest;
 import com.dev.subscriptionmanager.dto.SubscriptionResponse;
 import com.dev.subscriptionmanager.messaging.EventPublisher;
 import com.dev.subscriptionmanager.model.Event;
@@ -11,9 +12,11 @@ import com.dev.subscriptionmanager.model.enums.SubscriptionStatus;
 import com.dev.subscriptionmanager.repository.EventRepository;
 import com.dev.subscriptionmanager.repository.PlanRepository;
 import com.dev.subscriptionmanager.repository.SubscriptionRepository;
-import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 @Service
 public class SubscriptionService {
@@ -70,5 +73,40 @@ public class SubscriptionService {
 
         eventPublisher.publishEvent(event);
         System.out.println("LOG: Webhook de pagamento recebido usando Enum e enviado para a fila!");
+    }
+
+    @Transactional
+    public SubscriptionResponse changePlan(UUID subscriptionId, PlanChangeRequest request) {
+        Subscription subscription = subscriptionRepository.findById(subscriptionId)
+                .orElseThrow(() -> new RuntimeException("Assinatura não encontrada!"));
+
+        planRepository.findById(request.getNewPlanId())
+                .orElseThrow(() -> new RuntimeException("Novo plano não encontrado!"));
+
+        subscription.setPlanId(request.getNewPlanId());
+        subscriptionRepository.save(subscription);
+
+        Event event = new Event();
+        event.setType(EventType.SUBSCRIPTION_CREATED);
+        event.setData("{\"subscriptionId\":\"" + subscription.getId() + "\",\"action\":\"plan_changed\",\"newPlanId\":\"" + request.getNewPlanId() + "\"}");
+        eventRepository.save(event);
+        eventPublisher.publishEvent(event);
+
+        return convertToResponse(subscription);
+    }
+
+    @Transactional
+    public void cancelSubscription(UUID subscriptionId) {
+        Subscription subscription = subscriptionRepository.findById(subscriptionId)
+                .orElseThrow(() -> new RuntimeException("Assinatura não encontrada!"));
+
+        subscription.setStatus(SubscriptionStatus.CANCELED);
+        subscriptionRepository.save(subscription);
+
+        Event event = new Event();
+        event.setType(EventType.SUBSCRIPTION_CREATED);
+        event.setData("{\"subscriptionId\":\"" + subscription.getId() + "\",\"action\":\"canceled\"}");
+        eventRepository.save(event);
+        eventPublisher.publishEvent(event);
     }
 }
