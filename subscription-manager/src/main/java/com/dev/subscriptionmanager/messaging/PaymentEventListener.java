@@ -37,7 +37,7 @@ public class PaymentEventListener {
             UUID eventId = UUID.fromString(eventNode.get("id").asText());
 
             String eventTypeStr = eventNode.get("type").asText();
-            EventType eventType = EventType.valueOf(eventTypeStr);
+            EventType eventType = objectMapper.convertValue(eventNode.get("type"), EventType.class);
 
             JsonNode dataNode = objectMapper.readTree(eventNode.get("data").asText());
             UUID subscriptionId = UUID.fromString(dataNode.get("subscriptionId").asText());
@@ -50,7 +50,7 @@ public class PaymentEventListener {
                 subscription.setNextBillingDate(LocalDate.now().plusMonths(1));
                 System.out.println("LOG [Worker Pagamento]: Sucesso! Assinatura " + subscriptionId + " atualizada para ACTIVE!");
             } else if (eventType == EventType.PAYMENT_FAILED) {
-                subscription.setStatus(SubscriptionStatus.SUSPENDED); 
+                subscription.setStatus(SubscriptionStatus.SUSPENDED);
                 System.out.println("LOG [Worker Pagamento]: Falha! Assinatura " + subscriptionId + " atualizada para SUSPENDED!");
             }
 
