@@ -45,7 +45,11 @@ public class SubscriptionService {
 
         Event event = new Event();
         event.setType(EventType.SUBSCRIPTION_CREATED);
-        event.setData("{\"subscriptionId\":\"" + subscription.getId() + "\",\"email\":\"" + subscription.getCustomerEmail() + "\"}");
+        event.setData("{\"subscriptionId\":\""
+                + subscription.getId()
+                + "\",\"email\":\""
+                + subscription.getCustomerEmail() + "\",\"type\":\""
+                + EventType.SUBSCRIPTION_CREATED.getValue() + "\"}");
         event.setProcessed(false);
         eventRepository.save(event);
 
@@ -66,7 +70,11 @@ public class SubscriptionService {
     public void receivePaymentWebhook(PaymentWebhookDTO webhookDTO) {
         Event event = new Event();
         event.setType(webhookDTO.getEvent());
-        event.setData("{\"subscriptionId\":\"" + webhookDTO.getSubscriptionId() + "\",\"amount\":" + webhookDTO.getAmount() + "}");
+        event.setData("{\"subscriptionId\":\""
+                + webhookDTO.getSubscriptionId()
+                + "\",\"amount\":"
+                + webhookDTO.getAmount()
+                + ",\"type\":\"" + webhookDTO.getEvent().getValue() + "\"}");
         event.setProcessed(false);
 
         eventRepository.save(event);
