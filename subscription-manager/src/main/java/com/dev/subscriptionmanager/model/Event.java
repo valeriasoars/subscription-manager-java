@@ -19,6 +19,9 @@ public class Event {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Column(name = "external_payment_id", unique = true)
+    private String externalPaymentId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private EventType type;

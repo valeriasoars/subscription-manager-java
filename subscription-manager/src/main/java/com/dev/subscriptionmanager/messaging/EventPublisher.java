@@ -29,7 +29,9 @@ public class EventPublisher {
     }
 
     private String getRoutingKey(String eventType) {
-        if ("SUBSCRIPTION_CREATED".equals(eventType)) {
+        if ("SUBSCRIPTION_CREATED".equals(eventType)
+                || "SUBSCRIPTION_CANCELED".equals(eventType)
+                || "PLAN_CHANGED".equals(eventType)) {
             return RabbitMQConfig.ROUTING_KEY_CRIACAO;
         }
         return RabbitMQConfig.ROUTING_KEY_PAGAMENTO;

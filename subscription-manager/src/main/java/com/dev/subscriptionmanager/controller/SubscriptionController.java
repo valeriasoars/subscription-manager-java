@@ -4,6 +4,7 @@ import com.dev.subscriptionmanager.dto.CreateSubscriptionRequest;
 import com.dev.subscriptionmanager.dto.PlanChangeRequest;
 import com.dev.subscriptionmanager.dto.SubscriptionResponse;
 import com.dev.subscriptionmanager.service.SubscriptionService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,7 +19,7 @@ public class SubscriptionController {
     private SubscriptionService subscriptionService;
 
     @PostMapping
-    public ResponseEntity<SubscriptionResponse> createSubscription(@RequestBody CreateSubscriptionRequest request) {
+    public ResponseEntity<SubscriptionResponse> createSubscription(@Valid @RequestBody CreateSubscriptionRequest request) {
         SubscriptionResponse response = subscriptionService.createSubscription(request);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
